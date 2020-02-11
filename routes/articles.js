@@ -11,6 +11,7 @@ let Tags = require('../models/tags');
 const Codes = {
     ok: 200,
     created: 201,
+    badRequest: 400,
     notFound: 404,
     alreadyExists: 409,
     internalErr: 500
@@ -19,6 +20,7 @@ const Codes = {
 const Messages = {
     ok: "OK",
     created: "Article created",
+    badRequest: "Bad Request. Check your JSON input",
     notFound: "Not Found",
     alreadyExists: "Article with this title already exists",
     internalErr: "Internal Server Error"
@@ -42,6 +44,11 @@ router.post('/articles', function (req, res) {
     var data;
 
     articleExists(req.body.title, function (articleExists) {
+
+        if (!(req.body.title && req.body.description && req.body.publishDate && req.body.authorName && req.body.tags && (Object.keys(req.body).length === 5))) { //check if all properties exist and there are 5 of them
+            res.status(Codes.badRequest).send(JSON.stringify({message: Messages.badRequest}));
+            return;
+        }
 
         if (articleExists) {//article already exists in DB, cannot create a new one with same name
             res.status(Codes.alreadyExists).send(JSON.stringify({message: Messages.alreadyExists}));
