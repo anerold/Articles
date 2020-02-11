@@ -5,9 +5,6 @@ let Articles = require('../models/articles');//import model
 let Tags = require('../models/tags');
 
 
-//otazky:
-//1. ma mit article i nejakej text?
-
 const Codes = {
     ok: 200,
     created: 201,
@@ -29,16 +26,9 @@ const Messages = {
 
 
 
-router.get('/', function (req, res) {
-    res.send('Hello World!');
-});
-
-
-
-
 
 // create:
-router.post('/articles', function (req, res) {
+router.post('/', function (req, res) {
     //create article
 
     var data;
@@ -152,7 +142,7 @@ router.post('/articles', function (req, res) {
 });
 
 //  edit:
-router.put('/articles/:title', function (req, res) {
+router.put('/:title', function (req, res) {
     //edit article
 
     Articles.updateOne(
@@ -168,7 +158,7 @@ router.put('/articles/:title', function (req, res) {
 });
 
 // read:
-router.get('/articles/:title', function (req, res) {
+router.get('/:title', function (req, res) {
     //read article
     Articles.findOne({title: req.params.title}, {_id: 0, __v: 0}, function (err, docs) { //return article with ommited _id and __v
         if (err) {
@@ -198,7 +188,7 @@ router.get('/articles/:title', function (req, res) {
 });
 
 //list:
-router.get('/articles', function (req, res) {
+router.get('/', function (req, res) {
     //list articles
     Articles.find({}, {}, function (err, result) {
 
@@ -215,7 +205,7 @@ router.get('/articles', function (req, res) {
 });
 
 //    delete:
-router.delete('/articles/:title', function (req, res) {
+router.delete('/:title', function (req, res) {
     //delete article
     Articles.findOneAndRemove({title: req.params.title}, function (err, deletedDoc) {
 

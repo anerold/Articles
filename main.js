@@ -25,5 +25,8 @@ app.listen(port, function () {
 
 
 let articles = require('./routes/articles');
-app.use('/api', articles);
+app.use('/api/articles', articles);
+
+let tags = require('./routes/tags');
+app.use('/api/tags', tags);
 
