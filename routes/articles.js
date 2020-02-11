@@ -39,6 +39,7 @@ router.post('/articles/:title', function (req, res) {
     const publishDate = req.body.publishDate;
     const authorName = req.body.authorName;
 
+
     let data = new Articles({
         title: title,
         description: description,
@@ -47,59 +48,71 @@ router.post('/articles/:title', function (req, res) {
         createdAt: Date.now(),
         tags: []
     });
-    
-    
+
 
     //check if tag already exists in collection Tags
     //if yes, associate its _id with this document
     //if not, create new tag and associate its _id with this document
-    
-    for (var i = 0; i < req.body.tags.length; i++) {
-        
-        let thisTag = req.body.tags[i];
-        Tags.findOne({name: thisTag}, function (err, result) {
-            
-            if (err) {
 
+    function afterFinished() {
+        console.log("saving:")
+        console.log(data)
+        data.save((err) => {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log('Saved in DB');
+                res.status(200).send(JSON.stringify({ message: "OK" }));
+            }
+        });
+
+    }
+
+    var index = 0;
+    iterateTags(index, afterFinished);
+    //TODO: priradit knizky tagum
+    function iterateTags(index, callback) {
+        Tags.findOne({ name: req.body.tags[index] }, function (err, result) {
+            console.log(req.body.tags[index]);
+            if (err) {
+                console.log("error searching DB for tags");
 
             } else {
                 if (result) { //tag already exists in DB. associate its _id with this article
-                    console.log("ok, asi nalezenej tag " + result._id + "... Prirazuju jeho id k tomuhle dokumentu");
+                    //push already existing's tag's id to this article's tags
+                    console.log("pushing existing tag: " + req.body.tags[index] + " with index " + index);
                     data.tags.push(result._id);
-                        data.save((err) => {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log('Saved in DB');
-        }
-    });
+                    if (index === req.body.tags.length - 1) {
+                        callback();
+                    } else {
+                        index++
+                        iterateTags(index, callback);
+                    }
+
                 } else { //tag does not exist, create it
-                    console.log("nenalezen tag, asi neexistuje: " + thisTag + "... Vytvarim novy a vkladam do DB");
-                    let newTag = new Tags({name: thisTag});
-                    newTag.save(function (err, tag) {
-                        if (err) {
-                            console.log("err saving tag");
+                    let newTag = new Tags({ name: req.body.tags[index] });
+                    newTag.save().then(function (tag) {
+                        //push new tag's id to this article's tags
+                        console.log("pushing new tag: " + req.body.tags[index] + " with index " + index);
+                        data.tags.push(tag._id);
+                        if (index === req.body.tags.length - 1) {
+                            callback();
                         } else {
-                            console.log("tag saved under _id: " + tag._id);
-                            console.log("associating tag with this article");
-                            data.tags.push(tag._id);
-                        }
-                    });
+                        index++
+                        iterateTags(index, callback);
+                    }
+
+                    }).catch(function (err) {
+                        // some error occurred while saving newly created tag
+                        throw new Error(err.message);
+                    });;
                 }
             }
+
         });
+
+
     }
-
-
-//TODO: tohle musi bejt az callback po ulozeni tagu jinak se nestihnoout pushnout
-    data.save((err) => {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log('Saved in DB');
-        }
-    });
-    res.status(200).send(JSON.stringify({message: "OK"}));
 
 
 });
@@ -109,13 +122,13 @@ router.put('/articles/:title', function (req, res) {
     //edit article
 
     Articles.updateOne(
-            {title: req.params.title},
-            {
-                $set: req.body,
-                $currentDate: {lastModified: true}
-            }, function () {
-        res.status(200).send('{}');
-    }
+        { title: req.params.title },
+        {
+            $set: req.body,
+            $currentDate: { lastModified: true }
+        }, function () {
+            res.status(200).send('{}');
+        }
 
     );
 });
@@ -123,7 +136,7 @@ router.put('/articles/:title', function (req, res) {
 // read:
 router.get('/articles/:title', function (req, res) {
     //read article
-    Articles.find({title: req.params.title}, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
+    Articles.find({ title: req.params.title }, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
         if (err) {
             res.status(500).send('Internal Server Error.');
         } else {
@@ -135,7 +148,7 @@ router.get('/articles/:title', function (req, res) {
 //    delete:
 router.delete('/articles/:title', function (req, res) {
     //delete article
-    Articles.deleteOne({title: req.params.title}, function () {
+    Articles.deleteOne({ title: req.params.title }, function () {
         res.status(200).send('{}');
     }
     );
