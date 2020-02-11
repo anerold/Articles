@@ -173,12 +173,26 @@ router.put('/articles/:title', function (req, res) {
 // read:
 router.get('/articles/:title', function (req, res) {
     //read article
-    Articles.findOne({title: req.params.title}, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
+    Articles.findOne({title: req.params.title}, {_id: 0, __v: 0}, function (err, docs) { //return article with ommited _id and __v
         if (err) {
             res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
             if (docs) {
-                res.status(Codes.ok).send(docs);
+                //find this article's tags by ids:
+                Tags.find({
+                    '_id': {$in: docs.tags}
+                }, function (err, tags) {
+                    if (err) {
+                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                    } else {
+
+                        for (var i = 0; i < tags.length; i++) {
+                            docs.tags[i] = tags[i].name; //rewrite ids of tags in array with actual names of the tags 
+                        }
+                        res.status(Codes.ok).send(docs);
+                    }
+                });
+
             } else {
                 res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
             }
