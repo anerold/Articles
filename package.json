@@ -1,0 +1,17 @@
+{
+    "name": "Articles",
+    "version": "1.0.0",
+    "keywords": [
+        "util",
+        "functional",
+        "server",
+        "client",
+        "browser"
+    ],
+    "author": "adam",
+    "contributors": [],
+    "dependencies": {
+        "express": "^4.17.1",
+        "mongoose": "^5.8.11"
+    }
+}
