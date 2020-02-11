@@ -33,19 +33,7 @@ router.get('/', function (req, res) {
 
 
 
-//list:
-router.get('/articles', function (req, res) {
-    //list articles
-    Articles.find({}, {}, function (err, result) {
 
-        if (err) {
-            res.status(500).send(Messages.internalErr);
-        } else {
-
-            res.send(result);
-        }
-    });
-});
 
 // create:
 router.post('/articles', function (req, res) {
@@ -196,6 +184,23 @@ router.get('/articles/:title', function (req, res) {
             } else {
                 res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
             }
+        }
+    });
+});
+
+//list:
+router.get('/articles', function (req, res) {
+    //list articles
+    Articles.find({}, {}, function (err, result) {
+
+        if (err) {
+            res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+        } else {
+            var response = [];
+            for (var i = 0; i < result.length; i++) {
+                response.push(result[i].title); //return only array of article titles
+            }
+            res.status(Codes.ok).send(response);
         }
     });
 });
