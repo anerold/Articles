@@ -208,8 +208,39 @@ router.get('/articles', function (req, res) {
 //    delete:
 router.delete('/articles/:title', function (req, res) {
     //delete article
-    Articles.deleteOne({title: req.params.title}, function () {
-        res.status(200).send('{}');
+    Articles.findOneAndRemove({title: req.params.title}, function (err, deletedDoc) {
+
+        if (err) {
+            res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+        } else {
+            if (deletedDoc) {
+                //find tags that have this article associated with it and remove this article's id from the tag's list so the tag is not associated with non-existing article
+                Tags.find({articles: deletedDoc._id}, {}, function (err, tags) {  //find all tags that are associated with this article
+                    if (err) {
+                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                    } else {
+                        tagsIDsArr = []; // created arr of tags ids that are associated with this article
+                        for (var i = 0; i < tags.length; i++) {
+                            tagsIDsArr.push(tags[i]._id);
+                        }
+
+                        Tags.updateMany({_id: {$in: tagsIDsArr}}, {$pull: {"articles": deletedDoc._id}}, function (err, resp) { //pull this article's id from all tags associated with it
+                            if (err) {
+                                res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                            } else {
+                                res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
+                            }
+                        });
+
+                    }
+
+                });
+
+            } else {
+                res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
+
+            }
+        }
     }
     );
 });
