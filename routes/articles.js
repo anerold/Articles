@@ -85,7 +85,7 @@ router.post('/articles/:title', function (req, res) {
                     if (index === req.body.tags.length - 1) {
                         callback();
                     } else {
-                        index++
+                        index++;
                         iterateTags(index, callback);
                     }
 
@@ -98,7 +98,7 @@ router.post('/articles/:title', function (req, res) {
                         if (index === req.body.tags.length - 1) {
                             callback();
                         } else {
-                        index++
+                        index++;
                         iterateTags(index, callback);
                     }
 
