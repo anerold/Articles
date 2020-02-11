@@ -8,6 +8,23 @@ let Tags = require('../models/tags');
 //otazky:
 //1. ma mit article i nejakej text?
 
+const Codes = {
+    ok: 200,
+    created: 201,
+    notFound: 404,
+    alreadyExists: 409,
+    internalErr: 500
+};
+
+const Messages = {
+    ok: "OK",
+    created: "Article created",
+    notFound: "Not Found",
+    alreadyExists: "Article with this title already exists",
+    internalErr: "Internal Server Error"
+};
+
+
 
 
 router.get('/', function (req, res) {
@@ -22,7 +39,7 @@ router.get('/articles', function (req, res) {
     Articles.find({}, {}, function (err, result) {
 
         if (err) {
-            res.status(500).send('Internal Server Error.');
+            res.status(500).send(Messages.internalErr);
         } else {
 
             res.send(result);
@@ -34,25 +51,40 @@ router.get('/articles', function (req, res) {
 router.post('/articles', function (req, res) {
     //create article
 
-    const title = req.body.title;
-    const description = req.body.description;
-    const publishDate = req.body.publishDate;
-    const authorName = req.body.authorName;
+    var data;
+
+    articleExists(req.body.title, function (articleExists) {
+
+        if (articleExists) {//article already exists in DB, cannot create a new one with same name
+            res.status(Codes.alreadyExists).send(JSON.stringify({message: Messages.alreadyExists}));
+        } else {
+            const title = req.body.title;
+            const description = req.body.description;
+            const publishDate = req.body.publishDate;
+            const authorName = req.body.authorName;
 
 
-    let data = new Articles({
-        title: title,
-        description: description,
-        publishDate: publishDate,
-        authorName: authorName,
-        createdAt: Date.now(),
-        tags: []
+            data = new Articles({
+                title: title,
+                description: description,
+                publishDate: publishDate,
+                authorName: authorName,
+                createdAt: Date.now(),
+                tags: []
+            });
+
+
+            //check if tag already exists in collection Tags
+            //if yes, associate its _id with this document
+            //if not, create new tag and associate its _id with this document
+            var index = 0;
+            iterateTags(index, saveArticle);
+        }
+
+
+
     });
 
-
-    //check if tag already exists in collection Tags
-    //if yes, associate its _id with this document
-    //if not, create new tag and associate its _id with this document
 
     function saveArticle() {
         data.save((err, article) => {
@@ -60,11 +92,11 @@ router.post('/articles', function (req, res) {
                 console.log(err);
             } else {
                 console.log('Saved in DB');
-                associateArticlesWithTags(article._id, data.tags, function (err) {  
+                associateArticlesWithTags(article._id, data.tags, function (err) {
                     if (err) {
-                        res.status(500).send(JSON.stringify({message: "error"}));
+                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                     } else {
-                        res.status(200).send(JSON.stringify({message: "OK"}));
+                        res.status(Codes.created).send(JSON.stringify({message: Messages.ok})); //201: Created
                     }
                 });
 
@@ -73,8 +105,7 @@ router.post('/articles', function (req, res) {
 
     }
 
-    var index = 0;
-    iterateTags(index, saveArticle);
+
     //TODO: priradit knizky tagum
     function iterateTags(index, callback) {
         Tags.findOne({name: req.body.tags[index]}, function (err, result) {
@@ -142,11 +173,15 @@ router.put('/articles/:title', function (req, res) {
 // read:
 router.get('/articles/:title', function (req, res) {
     //read article
-    Articles.find({title: req.params.title}, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
+    Articles.findOne({title: req.params.title}, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
         if (err) {
-            res.status(500).send('Internal Server Error.');
+            res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
-            res.status(200).send(docs);
+            if (docs) {
+                res.status(Codes.ok).send(docs);
+            } else {
+                res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
+            }
         }
     });
 });
@@ -169,6 +204,23 @@ function associateArticlesWithTags(articleID, tagsID, callback) {
                 callback(err);
             }
     );
+
+}
+
+function articleExists(articleTitle, callback) {
+    Articles.findOne({title: articleTitle}, function (err, docs) {
+        if (err) {
+
+        } else {
+            if (docs) {
+                return callback(true);
+            } else {
+                return callback(false);
+            }
+
+        }
+    });
+
 
 }
 
