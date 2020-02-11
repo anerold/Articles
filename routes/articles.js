@@ -61,15 +61,18 @@ router.post('/articles', function (req, res) {
                 tags: []
             });
 
+            if (req.body.tags.length === 0) { //article have no tags
+                saveArticle();
+            } else {
+                //check if tag already exists in collection Tags
+                //if yes, associate its _id with this document
+                //if not, create new tag and associate its _id with this document
+                var index = 0;
+                iterateTags(index, saveArticle);
+            }
 
-            //check if tag already exists in collection Tags
-            //if yes, associate its _id with this document
-            //if not, create new tag and associate its _id with this document
-            var index = 0;
-            iterateTags(index, saveArticle);
+
         }
-
-
 
     });
 
@@ -94,7 +97,6 @@ router.post('/articles', function (req, res) {
     }
 
 
-    //TODO: priradit knizky tagum
     function iterateTags(index, callback) {
         Tags.findOne({name: req.body.tags[index]}, function (err, result) {
             console.log(req.body.tags[index]);
