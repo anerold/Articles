@@ -31,7 +31,7 @@ router.get('/articles', function (req, res) {
 });
 
 // create:
-router.post('/articles/:title', function (req, res) {
+router.post('/articles', function (req, res) {
     //create article
 
     const title = req.body.title;
@@ -54,25 +54,30 @@ router.post('/articles/:title', function (req, res) {
     //if yes, associate its _id with this document
     //if not, create new tag and associate its _id with this document
 
-    function afterFinished() {
-        console.log("saving:")
-        console.log(data)
-        data.save((err) => {
+    function saveArticle() {
+        data.save((err, article) => {
             if (err) {
                 console.log(err);
             } else {
                 console.log('Saved in DB');
-                res.status(200).send(JSON.stringify({ message: "OK" }));
+                associateArticlesWithTags(article._id, data.tags, function (err) {  
+                    if (err) {
+                        res.status(500).send(JSON.stringify({message: "error"}));
+                    } else {
+                        res.status(200).send(JSON.stringify({message: "OK"}));
+                    }
+                });
+
             }
         });
 
     }
 
     var index = 0;
-    iterateTags(index, afterFinished);
+    iterateTags(index, saveArticle);
     //TODO: priradit knizky tagum
     function iterateTags(index, callback) {
-        Tags.findOne({ name: req.body.tags[index] }, function (err, result) {
+        Tags.findOne({name: req.body.tags[index]}, function (err, result) {
             console.log(req.body.tags[index]);
             if (err) {
                 console.log("error searching DB for tags");
@@ -90,7 +95,7 @@ router.post('/articles/:title', function (req, res) {
                     }
 
                 } else { //tag does not exist, create it
-                    let newTag = new Tags({ name: req.body.tags[index] });
+                    let newTag = new Tags({name: req.body.tags[index]});
                     newTag.save().then(function (tag) {
                         //push new tag's id to this article's tags
                         console.log("pushing new tag: " + req.body.tags[index] + " with index " + index);
@@ -98,14 +103,15 @@ router.post('/articles/:title', function (req, res) {
                         if (index === req.body.tags.length - 1) {
                             callback();
                         } else {
-                        index++;
-                        iterateTags(index, callback);
-                    }
+                            index++;
+                            iterateTags(index, callback);
+                        }
 
                     }).catch(function (err) {
                         // some error occurred while saving newly created tag
                         throw new Error(err.message);
-                    });;
+                    });
+                    ;
                 }
             }
 
@@ -122,13 +128,13 @@ router.put('/articles/:title', function (req, res) {
     //edit article
 
     Articles.updateOne(
-        { title: req.params.title },
-        {
-            $set: req.body,
-            $currentDate: { lastModified: true }
-        }, function () {
-            res.status(200).send('{}');
-        }
+            {title: req.params.title},
+            {
+                $set: req.body,
+                $currentDate: {lastModified: true}
+            }, function () {
+        res.status(200).send('{}');
+    }
 
     );
 });
@@ -136,7 +142,7 @@ router.put('/articles/:title', function (req, res) {
 // read:
 router.get('/articles/:title', function (req, res) {
     //read article
-    Articles.find({ title: req.params.title }, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
+    Articles.find({title: req.params.title}, function (err, docs) { //TODO: predelat na findOne a nebo find ale cekovet esi to vrati prave jeden dokument (tj. nejsou duplikaty)
         if (err) {
             res.status(500).send('Internal Server Error.');
         } else {
@@ -148,11 +154,23 @@ router.get('/articles/:title', function (req, res) {
 //    delete:
 router.delete('/articles/:title', function (req, res) {
     //delete article
-    Articles.deleteOne({ title: req.params.title }, function () {
+    Articles.deleteOne({title: req.params.title}, function () {
         res.status(200).send('{}');
     }
     );
 });
+
+function associateArticlesWithTags(articleID, tagsID, callback) {
+
+    Tags.updateMany(
+            {_id: {$in: tagsID}}, //array of tags ids to update
+            {$push: {articles: articleID}},
+            function (err) {
+                callback(err);
+            }
+    );
+
+}
 
 
 module.exports = router;
