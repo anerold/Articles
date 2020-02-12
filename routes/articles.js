@@ -65,7 +65,7 @@ router.post('/', function (req, res) {
                 //if yes, associate its _id with this document
                 //if not, create new tag and associate its _id with this document
                 var index = 0;
-                iterateTags(req, data, index, saveArticle);
+                iterateTags(req.body.tags, data, index, saveArticle);
             }
 
 
@@ -105,12 +105,16 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
 
     //params: title, description,authorName,publishDate,addTags,removeTags
     var data = JSON.parse(JSON.stringify(req.body));  //make a deep copy of req.body
-    var tagsToBeRemoved;
+    delete data.addTags;
+    delete data.removeTags;
+    data.tags = [];
+    var tagsToBeRemoved, tagsToBeAdded;
+
 
 
 
     //first find the article to edit in order to read its current tags:
-    Articles.findOne({title: req.params.title}, {}, function (err, docs) { //return article with ommited _id and __v
+    Articles.findOne({title: req.params.title}, {}, function (err, docs) {
         if (err) {
             res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
@@ -127,7 +131,7 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
                             existingTagNames.push(tags[i].name); //push names of the tags associated with this article
                         }
                         tagsToBeRemoved = existingTagNames.filter(val => req.body.removeTags.includes(val));
-                        var tagsToBeAdded = req.body.addTags.filter(val => !existingTagNames.includes(val));  //remove any tags that are to be added but are already associated with the article
+                        tagsToBeAdded = req.body.addTags.filter(val => !existingTagNames.includes(val));  //remove any tags that are to be added but are already associated with the article
 
                         for (var i = 0; i < tagsToBeRemoved.length; i++) {
                             tagsToBeRemoved[i] = tags[existingTagNames.indexOf(tagsToBeRemoved[i])]._id; //convert array of names to array of ids
@@ -137,10 +141,12 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
                             if (err) {
                                 res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                             } else {
-                                editArticle();
+                                var index = 0;
+                                iterateTags(tagsToBeAdded, data, index, editArticle);
+
                             }
                         });
-                        
+
 
                     }
                 });
@@ -151,24 +157,42 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
         }
     });
     function editArticle() {
+        const newTags = data.tags; //need to save new tags to new variable and delete from data othervise it will rewrite already existing tags with $set
+        delete data.tags;
+        
+        
 
-        Articles.findOneAndUpdate(
+        Articles.updateOne(//no need to find the article here, I already know it exists from before
                 {title: req.params.title},
                 {
-                    $set: req.body,
+                    $set: data,
                     $pull: {tags: {$in: tagsToBeRemoved}},
+                    //$push: {tags: {$each: newTags}},
                     $currentDate: {lastModified: true}
                 },
-                function (err, doc) {
+                function (err) {
 
                     if (err) {
+                        console.log(err);
                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                     } else {
-                        if (doc) {
-                            res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
-                        } else {
-                            res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
-                        }
+
+                        Articles.updateOne(//updating tags needs to be done in two steps, first pull tags to be removed and second push tags to be added
+                                {title: req.params.title},
+                                {
+                                    $push: {tags: {$each: newTags}},
+                                },
+                                function (err) {
+
+                                    if (err) {
+                                        console.log(err);
+                                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                                    } else {
+                                        res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
+
+                                    }
+                                });
+
                     }
                 });
     }
@@ -290,33 +314,33 @@ function articleExists(articleTitle, callback) {
 
 }
 
-function iterateTags(req, data, index, callback) {
-    Tags.findOne({name: req.body.tags[index]}, function (err, result) {
-        console.log(req.body.tags[index]);
+function iterateTags(tags, data, index, callback) {
+    Tags.findOne({name: tags[index]}, function (err, result) {
+        console.log(tags[index]);
         if (err) {
             console.log("error searching DB for tags")
         } else {
             if (result) { //tag already exists in DB. associate its _id with this article
                 //push already existing's tag's id to this article's tags
-                console.log("pushing existing tag: " + req.body.tags[index] + " with index " + index);
+                console.log("pushing existing tag: " + tags[index] + " with index " + index);
                 data.tags.push(result._id);
-                if (index === req.body.tags.length - 1) {
+                if (index === tags.length - 1) {
                     callback();
                 } else {
                     index++;
-                    iterateTags(req, data, index, callback);
+                    iterateTags(tags, data, index, callback);
                 }
             } else { //tag does not exist, create it
-                let newTag = new Tags({name: req.body.tags[index]});
+                let newTag = new Tags({name: tags[index]});
                 newTag.save().then(function (tag) {
                     //push new tag's id to this article's tags
-                    console.log("pushing new tag: " + req.body.tags[index] + " with index " + index);
+                    console.log("pushing new tag: " + tags[index] + " with index " + index);
                     data.tags.push(tag._id);
-                    if (index === req.body.tags.length - 1) {
+                    if (index === tags.length - 1) {
                         callback();
                     } else {
                         index++;
-                        iterateTags(req, data, index, callback);
+                        iterateTags(tags, data, index, callback);
                     }
 
                 }).catch(function (err) {
