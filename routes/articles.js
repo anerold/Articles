@@ -110,7 +110,7 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
 
 
     //first find the article to edit in order to read its current tags:
-    Articles.findOne({title: req.params.title}, {_id: 0, __v: 0}, function (err, docs) { //return article with ommited _id and __v
+    Articles.findOne({title: req.params.title}, {}, function (err, docs) { //return article with ommited _id and __v
         if (err) {
             res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
@@ -132,7 +132,15 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
                         for (var i = 0; i < tagsToBeRemoved.length; i++) {
                             tagsToBeRemoved[i] = tags[existingTagNames.indexOf(tagsToBeRemoved[i])]._id; //convert array of names to array of ids
                         }
-                        editArticle();
+
+                        Tags.updateMany({_id: {$in: tagsToBeRemoved}}, {$pull: {"articles": docs._id}}, function (err, resp) { //pull this article's id from all tags associated with it
+                            if (err) {
+                                res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                            } else {
+                                editArticle();
+                            }
+                        });
+                        
 
                     }
                 });
