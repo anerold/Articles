@@ -65,7 +65,7 @@ router.post('/', function (req, res) {
                 //if yes, associate its _id with this document
                 //if not, create new tag and associate its _id with this document
                 var index = 0;
-                iterateTags(index, saveArticle);
+                iterateTags(req, data, index, saveArticle);
             }
 
 
@@ -94,67 +94,76 @@ router.post('/', function (req, res) {
     }
 
 
-    function iterateTags(index, callback) {
-        Tags.findOne({name: req.body.tags[index]}, function (err, result) {
-            console.log(req.body.tags[index]);
-            if (err) {
-                console.log("error searching DB for tags");
 
-            } else {
-                if (result) { //tag already exists in DB. associate its _id with this article
-                    //push already existing's tag's id to this article's tags
-                    console.log("pushing existing tag: " + req.body.tags[index] + " with index " + index);
-                    data.tags.push(result._id);
-                    if (index === req.body.tags.length - 1) {
-                        callback();
-                    } else {
-                        index++;
-                        iterateTags(index, callback);
-                    }
-
-                } else { //tag does not exist, create it
-                    let newTag = new Tags({name: req.body.tags[index]});
-                    newTag.save().then(function (tag) {
-                        //push new tag's id to this article's tags
-                        console.log("pushing new tag: " + req.body.tags[index] + " with index " + index);
-                        data.tags.push(tag._id);
-                        if (index === req.body.tags.length - 1) {
-                            callback();
-                        } else {
-                            index++;
-                            iterateTags(index, callback);
-                        }
-
-                    }).catch(function (err) {
-                        // some error occurred while saving newly created tag
-                        throw new Error(err.message);
-                    });
-                    ;
-                }
-            }
-
-        });
-
-
-    }
 
 
 });
 
 //  edit:
-router.put('/:title', function (req, res) {
+router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi este pogoogli esi se to ma fakt delat)
     //edit article
 
-    Articles.updateOne(
-            {title: req.params.title},
-            {
-                $set: req.body,
-                $currentDate: {lastModified: true}
-            }, function () {
-        res.status(200).send('{}');
-    }
+    //params: title, description,authorName,publishDate,addTags,removeTags
+    var data = JSON.parse(JSON.stringify(req.body));  //make a deep copy of req.body
+    var tagsToBeRemoved;
 
-    );
+
+
+    //first find the article to edit in order to read its current tags:
+    Articles.findOne({title: req.params.title}, {_id: 0, __v: 0}, function (err, docs) { //return article with ommited _id and __v
+        if (err) {
+            res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+        } else {
+            if (docs) {
+                //find this article's tags by ids:
+                Tags.find({
+                    '_id': {$in: docs.tags}
+                }, function (err, tags) {
+                    if (err) {
+                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                    } else {
+                        var existingTagNames = [];
+                        for (var i = 0; i < tags.length; i++) {
+                            existingTagNames.push(tags[i].name); //push names of the tags associated with this article
+                        }
+                        tagsToBeRemoved = existingTagNames.filter(val => req.body.removeTags.includes(val));
+                        var tagsToBeAdded = req.body.addTags.filter(val => !existingTagNames.includes(val));  //remove any tags that are to be added but are already associated with the article
+
+                        for (var i = 0; i < tagsToBeRemoved.length; i++) {
+                            tagsToBeRemoved[i] = tags[existingTagNames.indexOf(tagsToBeRemoved[i])]._id; //convert array of names to array of ids
+                        }
+                        editArticle();
+
+                    }
+                });
+
+            } else {
+                res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
+            }
+        }
+    });
+    function editArticle() {
+
+        Articles.findOneAndUpdate(
+                {title: req.params.title},
+                {
+                    $set: req.body,
+                    $pull: {tags: {$in: tagsToBeRemoved}},
+                    $currentDate: {lastModified: true}
+                },
+                function (err, doc) {
+
+                    if (err) {
+                        res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                    } else {
+                        if (doc) {
+                            res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
+                        } else {
+                            res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound}));
+                        }
+                    }
+                });
+    }
 });
 
 // read:
@@ -174,7 +183,7 @@ router.get('/:title', function (req, res) {
                     } else {
 
                         for (var i = 0; i < tags.length; i++) {
-                            docs.tags[i] = tags[i].name; //rewrite ids of tags in array with actual names of the tags 
+                            docs.tags[i] = tags[i].name; //rewrite ids of tags in array with actual names of the tags
                         }
                         res.status(Codes.ok).send(docs);
                     }
@@ -268,6 +277,48 @@ function articleExists(articleTitle, callback) {
             }
 
         }
+    });
+
+
+}
+
+function iterateTags(req, data, index, callback) {
+    Tags.findOne({name: req.body.tags[index]}, function (err, result) {
+        console.log(req.body.tags[index]);
+        if (err) {
+            console.log("error searching DB for tags")
+        } else {
+            if (result) { //tag already exists in DB. associate its _id with this article
+                //push already existing's tag's id to this article's tags
+                console.log("pushing existing tag: " + req.body.tags[index] + " with index " + index);
+                data.tags.push(result._id);
+                if (index === req.body.tags.length - 1) {
+                    callback();
+                } else {
+                    index++;
+                    iterateTags(req, data, index, callback);
+                }
+            } else { //tag does not exist, create it
+                let newTag = new Tags({name: req.body.tags[index]});
+                newTag.save().then(function (tag) {
+                    //push new tag's id to this article's tags
+                    console.log("pushing new tag: " + req.body.tags[index] + " with index " + index);
+                    data.tags.push(tag._id);
+                    if (index === req.body.tags.length - 1) {
+                        callback();
+                    } else {
+                        index++;
+                        iterateTags(req, data, index, callback);
+                    }
+
+                }).catch(function (err) {
+                    // some error occurred while saving newly created tag
+                    throw new Error(err.message);
+                });
+                ;
+            }
+        }
+
     });
 
 
