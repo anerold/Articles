@@ -108,7 +108,7 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
     delete data.addTags;
     delete data.removeTags;
     data.tags = [];
-    var tagsToBeRemoved, tagsToBeAdded;
+    var tagsToBeRemoved, tagsToBeAdded, articleID;
 
 
 
@@ -119,6 +119,7 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
             res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
             if (docs) {
+                articleID = docs._id;
                 //find this article's tags by ids:
                 Tags.find({
                     '_id': {$in: docs.tags}
@@ -188,7 +189,16 @@ router.put('/:title', function (req, res) { //TODO: increment __v (asi, radsi es
                                         console.log(err);
                                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                                     } else {
-                                        res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
+
+                                        associateArticlesWithTags(articleID, newTags, function (err) {
+                                            if(err){
+                                                res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
+                                            }else{
+                                                res.status(Codes.ok).send(JSON.stringify({message: Messages.ok}));
+                                            }
+
+                                        });
+                                        
 
                                     }
                                 });
