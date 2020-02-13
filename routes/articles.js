@@ -54,7 +54,7 @@ router.post('/', [
             //if yes, associate its _id with this document
             //if not, create new tag and associate its _id with this document
             var index = 0;
-            iterateTags(req.body.tags, data, index, saveArticle);
+            iterateTags(res, req.body.tags, data, index, saveArticle);
         }
 
 
@@ -82,7 +82,7 @@ router.post('/', [
 });
 
 //  edit:
-//  //params: title, description,authorName,publishDate,addTags,removeTags
+//  //params: title, description, authorName, publishDate, addTags, removeTags
 router.put('/:title', [
     //validate inputs:
     check('title').optional().isString(),
@@ -146,7 +146,7 @@ router.put('/:title', [
                                 } else {
                                     var index = 0;
                                     if (tagsToBeAdded.length !== 0) {
-                                        iterateTags(tagsToBeAdded, data, index, editArticle);
+                                        iterateTags(res, tagsToBeAdded, data, index, editArticle);
                                     } else {
                                         editArticle();
                                     }
@@ -262,7 +262,7 @@ router.get('/', function (req, res) {
     });
 });
 
-//    delete:
+//delete:
 router.delete('/:title', function (req, res) {
     //delete article
     Articles.findOneAndRemove({title: req.params.title}, function (err, deletedDoc) {
@@ -302,6 +302,7 @@ router.delete('/:title', function (req, res) {
     );
 });
 
+//write to tag's 'articles' array article associated with it
 function associateArticlesWithTags(articleID, tagsID, callback) {
 
     Tags.updateMany(
@@ -314,6 +315,7 @@ function associateArticlesWithTags(articleID, tagsID, callback) {
 
 }
 
+//check if article already exists:
 function articleExists(articleTitle, callback) {
     Articles.findOne({title: articleTitle}, function (err, docs) {
         if (err) {
@@ -331,11 +333,17 @@ function articleExists(articleTitle, callback) {
 
 }
 
-function iterateTags(tags, data, index, callback) {
+//input args:
+//res: resp. of http request calling this function
+//tags: names of tags to iterate trough
+//data: article to which these tags belong
+//index: this function is called recursivelly utill index === tags.length - 1
+//callback: callback function
+function iterateTags(res, tags, data, index, callback) {
     Tags.findOne({name: tags[index]}, function (err, result) {
         console.log(tags[index]);
         if (err) {
-            console.log("error searching DB for tags")
+            res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
             if (result) { //tag already exists in DB. associate its _id with this article
                 //push already existing's tag's id to this article's tags
@@ -344,7 +352,7 @@ function iterateTags(tags, data, index, callback) {
                     callback();
                 } else {
                     index++;
-                    iterateTags(tags, data, index, callback);
+                    iterateTags(res, tags, data, index, callback);
                 }
             } else { //tag does not exist, create it
                 let newTag = new Tags({name: tags[index]});
@@ -355,12 +363,12 @@ function iterateTags(tags, data, index, callback) {
                         callback();
                     } else {
                         index++;
-                        iterateTags(tags, data, index, callback);
+                        iterateTags(res, tags, data, index, callback);
                     }
 
                 }).catch(function (err) {
                     // some error occurred while saving newly created tag
-                    throw new Error(err.message);
+                    res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                 });
                 ;
             }
