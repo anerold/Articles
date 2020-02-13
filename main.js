@@ -26,6 +26,10 @@ app.listen(port, function () {
     console.log("Server listening on port " + port);
 });
 
+app.use (function (error, req, res, next){
+    //Catch json error
+    res.status(400).send(JSON.stringify({message: "Body is not a valid JSON"}));
+});
 
 
 let articles = require('./routes/articles');
