@@ -1,31 +1,10 @@
 const express = require('express');
 const {check, validationResult} = require('express-validator');
+const {Codes, Messages} = require('../respCodes');
 var router = express.Router();
 
 let Articles = require('../models/articles');//import model
 let Tags = require('../models/tags');
-
-
-const Codes = {
-    ok: 200,
-    created: 201,
-    badRequest: 400,
-    notFound: 404,
-    alreadyExists: 409,
-    internalErr: 500
-};
-
-const Messages = {
-    ok: "OK",
-    created: "Article created",
-    badRequest: "Bad Request. Check your JSON input",
-    notFound: "Not Found",
-    alreadyExists: "Article with this title already exists",
-    internalErr: "Internal Server Error"
-};
-
-
-
 
 
 // create:
@@ -52,49 +31,46 @@ router.post('/', [
 
         if (articleExists) {//article already exists in DB, cannot create a new one with same name
             res.status(Codes.alreadyExists).send(JSON.stringify({message: Messages.alreadyExists}));
-        } else {
-            const title = req.body.title;
-            const description = req.body.description;
-            const publishDate = req.body.publishDate;
-            const authorName = req.body.authorName;
-
-
-            data = new Articles({
-                title: title,
-                description: description,
-                publishDate: publishDate,
-                authorName: authorName,
-                createdAt: Date.now(),
-                tags: []
-            });
-
-            if (req.body.tags.length === 0) { //article have no tags
-                saveArticle();
-            } else {
-                //check if tag already exists in collection Tags
-                //if yes, associate its _id with this document
-                //if not, create new tag and associate its _id with this document
-                var index = 0;
-                iterateTags(req.body.tags, data, index, saveArticle);
-            }
-
-
+            return;
         }
+        const title = req.body.title;
+        const description = req.body.description;
+        const publishDate = req.body.publishDate;
+        const authorName = req.body.authorName;
+
+        data = new Articles({
+            title: title,
+            description: description,
+            publishDate: publishDate,
+            authorName: authorName,
+            createdAt: Date.now(),
+            tags: []
+        });
+
+        if (req.body.tags.length === 0) { //article have no tags
+            saveArticle();
+        } else {
+            //check if tag already exists in collection Tags
+            //if yes, associate its _id with this document
+            //if not, create new tag and associate its _id with this document
+            var index = 0;
+            iterateTags(req.body.tags, data, index, saveArticle);
+        }
+
 
     });
 
 
     function saveArticle() {
-        data.save((err, article) => {
+        data.save(function (err, article) {
             if (err) {
-                console.log(err);
+                res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
             } else {
-                console.log('Saved in DB');
                 associateArticlesWithTags(article._id, data.tags, function (err) {
                     if (err) {
                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                     } else {
-                        res.status(Codes.created).send(JSON.stringify({message: Messages.ok})); //201: Created
+                        res.status(Codes.created).send(JSON.stringify({message: Messages.created})); //201: Created
                     }
                 });
 
@@ -209,7 +185,6 @@ router.put('/:title', [
                         console.log(err);
                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                     } else {
-
                         Articles.updateOne(//updating tags needs to be done in two steps, first pull tags to be removed and second push tags to be added
                                 {title: req.params.title},
                                 {

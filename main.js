@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const {Codes, Messages} = require('./respCodes');
 
 const port = 3000;
 
@@ -26,9 +27,9 @@ app.listen(port, function () {
     console.log("Server listening on port " + port);
 });
 
-app.use (function (error, req, res, next){
+app.use(function (error, req, res, next) {
     //Catch json error
-    res.status(400).send(JSON.stringify({message: "Body is not a valid JSON"}));
+    res.status(Codes.badRequest).send(JSON.stringify({message: Codes.badRequest, reason: "Input is not a valid JSON"}));
 });
 
 
