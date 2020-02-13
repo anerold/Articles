@@ -5,7 +5,11 @@ const bodyParser = require('body-parser');
 
 const port = 3000;
 
-mongoose.connect('mongodb://localhost:27017/articles');//connect to DB
+if (process.argv[2]) {
+    mongoose.connect(process.argv[2]);
+} else {
+    mongoose.connect('mongodb://localhost:27017/articles');//connect to DB
+}
 
 let db = mongoose.connection;
 db.on('error', function (err) {//if connection error 
