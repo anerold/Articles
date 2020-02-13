@@ -29,6 +29,7 @@ const Messages = {
 
 
 // create:
+// params: title, description, authorName, publishDate, tags
 router.post('/', [
     //validate inputs:
     check('title').isString(),
@@ -43,7 +44,7 @@ router.post('/', [
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        res.status(Codes.badRequest).send(JSON.stringify({message: Messages.badRequest,reason:errors}));
+        res.status(Codes.badRequest).send(JSON.stringify({message: Messages.badRequest, reason: errors}));
         return;
     }
 
@@ -105,6 +106,7 @@ router.post('/', [
 });
 
 //  edit:
+//  //params: title, description,authorName,publishDate,addTags,removeTags
 router.put('/:title', [
     //validate inputs:
     check('title').optional().isString(),
@@ -113,10 +115,8 @@ router.put('/:title', [
     check('publishDate').optional().isString(),
     check('addTags').optional().isArray(),
     check('removeTags').optional().isArray()
-], function (req, res) { //TODO: increment __v (asi, radsi este pogoogli esi se to ma fakt delat)
-    //TODO: sanitize inputs
+], function (req, res) {
     //edit article
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         //there were some errors validating input
@@ -124,12 +124,8 @@ router.put('/:title', [
         return;
     }
 
-    //params: title, description,authorName,publishDate,addTags,removeTags
-    try {
-        var data = JSON.parse(JSON.stringify(req.body));  //make a deep copy of req.body
-    } catch (err) {
-        res.status(Codes.badRequest).send(JSON.stringify({message: Messages.badRequest}));
-    }
+    var data = JSON.parse(JSON.stringify(req.body));  //make a deep copy of req.body
+
     delete data.addTags;
     delete data.removeTags;
     data.tags = [];
@@ -204,6 +200,7 @@ router.put('/:title', [
                     $set: data,
                     $pull: {tags: {$in: tagsToBeRemoved}},
                     //$push: {tags: {$each: newTags}},
+                    $inc: {__v: 1},
                     $currentDate: {lastModified: true}
                 },
                 function (err) {
