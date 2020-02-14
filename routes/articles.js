@@ -182,7 +182,6 @@ router.put('/:title', [
                 function (err) {
 
                     if (err) {
-                        console.log(err);
                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                     } else {
                         Articles.updateOne(//updating tags needs to be done in two steps, first pull tags to be removed and second push tags to be added
@@ -193,7 +192,6 @@ router.put('/:title', [
                                 function (err) {
 
                                     if (err) {
-                                        console.log(err);
                                         res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
                                     } else {
 
@@ -341,7 +339,6 @@ function articleExists(articleTitle, callback) {
 //callback: callback function
 function iterateTags(res, tags, data, index, callback) {
     Tags.findOne({name: tags[index]}, function (err, result) {
-        console.log(tags[index]);
         if (err) {
             res.status(Codes.internalErr).send(JSON.stringify({message: Messages.internalErr}));
         } else {
