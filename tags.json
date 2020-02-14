@@ -1,0 +1,7 @@
+{"_id":{"$oid":"5e464c014e66c1515b58526d"},"articles":[{"$oid":"5e464c014e66c1515b58526c"},{"$oid":"5e464c204e66c1515b58526f"}],"name":"hot","__v":0}
+{"_id":{"$oid":"5e464c014e66c1515b58526e"},"articles":[{"$oid":"5e464c014e66c1515b58526c"},{"$oid":"5e464c204e66c1515b58526f"}],"name":"trending","__v":0}
+{"_id":{"$oid":"5e464c204e66c1515b585270"},"articles":[],"name":"new","__v":0}
+{"_id":{"$oid":"5e464c4c4e66c1515b585272"},"articles":[{"$oid":"5e464c4c4e66c1515b585271"}],"name":"foo","__v":0}
+{"_id":{"$oid":"5e464c4c4e66c1515b585273"},"articles":[{"$oid":"5e464c4c4e66c1515b585271"}],"name":"bar","__v":0}
+{"_id":{"$oid":"5e464c4c4e66c1515b585274"},"articles":[{"$oid":"5e464c4c4e66c1515b585271"}],"name":"baz","__v":0}
+{"_id":{"$oid":"5e464c824e66c1515b585275"},"articles":[{"$oid":"5e464c204e66c1515b58526f"}],"name":"old","__v":0}
