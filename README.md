@@ -2,6 +2,7 @@
 REST API for creating, listing, editing and deleting articles. The app is writen in NodeJS using express framework and uses MongoDB as its database.
 Every article can have multiple tags and every tag can have multiple articles. Connection between articles and tags collections is done via
 MongoDB's `_id` value - i.e. every article has array of `_id`s of tags associated with it and every tag has array of `_id`s of articles associated with it.
+Tags' names are unique. If creating new article with a tag that already exists in the DB, the app associates this new article with the already existing tag.
 
 By default the app uses `mongodb://localhost:27017/articles` mongo URI but can be changed via cli argument: `node main.js mongodb://path.to.mongodb`
 
