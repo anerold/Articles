@@ -29,7 +29,14 @@ app.listen(port, function () {
 
 app.use(function (error, req, res, next) {
     //Catch json error
-    res.status(Codes.badRequest).send(JSON.stringify({message: Codes.badRequest, reason: "Input is not a valid JSON"}));
+    res.status(Codes.badRequest).send(JSON.stringify({message: Messages.badRequest, reason: "Input is not a valid JSON"}));
+});
+
+
+app.use(function(req, res, next) {
+  //invalid endpoint call
+  res.status(Codes.notFound).send(JSON.stringify({message: Messages.notFound, reason: "Invalid endpoint"}));
+
 });
 
 
